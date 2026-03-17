@@ -1,0 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+.sticky-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.sticky-container::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.drag-handle {
+  height: 35px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  user-select: none;
+  background: rgba(0,0,0,0.04);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.color-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.color-dot.active {
+  transform: scale(1.2);
+  border: 2px solid rgba(0,0,0,0.3);
+}
+
+.controls-overlay {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  opacity: 1;
+  background: rgba(0,0,0,0.05);
+}
+
+.close-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ff5f56;
+  cursor: pointer;
+  margin-left: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* New Title Area */
+.title-input {
+  background: transparent;
+  border: none;
+  padding: 15px 20px 5px 20px;
+  font-family: 'Gloria Hallelujah', cursive;
+  font-size: 1.1rem;
+  font-weight: bold;
+  outline: none;
+  color: rgba(0,0,0,0.7);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Rich Text Area */
+.note-content {
+  flex: 1;
+  padding: 5px 20px 20px 20px;
+  font-family: 'Gloria Hallelujah', cursive;
+  font-size: 1.1rem;
+  outline: none;
+  color: rgba(0,0,0,0.8);
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+.note-content:empty:before {
+  content: attr(placeholder);
+  color: rgba(0,0,0,0.3);
+}
+
+/* Handwritten Highlight Style */
+.note-content span[style*="background-color"] {
+  /* Targeted selector for spans created by hiliteColor */
+  padding: 1px 6px;
+  margin: 0 -2px;
+  border-radius: 0.8em 0.3em;
+  display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  
+  /* Uneven edges for "marker" look */
+  border-top-left-radius: 20% 50%;
+  border-top-right-radius: 60% 10%;
+  border-bottom-right-radius: 30% 60%;
+  border-bottom-left-radius: 10% 20%;
+  
+  /* Ensure it looks bold on top of the note */
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
+.note-content mark {
+  background-color: #fef08a;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Highlight Controls UI */
+.hl-controls {
+  display: flex;
+  align-items: center;
+  position: relative;
+  border-radius: 6px;
+  padding: 1px;
+  margin-right: 4px;
+}
+
+.hl-controls:hover .hl-popup {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.hl-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+  margin-top: 0px;
+  padding-top: 10px;
+  min-width: 130px;
+  border: 1px solid rgba(0,0,0,0.05);
+  
+  /* Animation properties */
+  visibility: hidden;
+  opacity: 0;
+  /* Start slightly higher and smaller to "drop" down */
+  transform: translateY(-8px) scale(0.9);
+  transition: 
+    opacity 0.2s ease, 
+    transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28),
+    visibility 0.2s;
+  pointer-events: none;
+  transform-origin: top right;
+}
+
+.hl-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+  font-size: 12px;
+  color: #444;
+  white-space: nowrap;
+}
+
+.hl-popup-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.hl-popup-item.active {
+  background: rgba(0,0,0,0.08);
+  font-weight: 600;
+}
+
+.hl-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.hl-dot[style*="transparent"] {
+  background: #eee !important;
+  border: 1px dashed #ccc;
+}
+
+/* Checklist Mode Styles */
+.note-content.checklist-active ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-content.checklist-active li {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.note-content.checklist-active li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.5);
+  transition: all 0.2s;
+}
+
+.note-content.checklist-active li.checked {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.note-content.checklist-active li.checked::before {
+  background-color: #4ade80;
+  border-color: #4ade80;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Custom Scrollbar */
+.note-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.note-content::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
+}
