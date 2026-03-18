@@ -4,11 +4,11 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import "./NoteWindow.css";
 
 const COLORS = [
-  { name: 'Cream', bg: '#fdf2c7', accent: '#684c1e' },
-  { name: 'Pink', bg: '#ff2da0', accent: '#77194f' },
-  { name: 'Cyan', bg: '#51d0f0', accent: '#1c5f6d' },
-  { name: 'Orange', bg: '#feac41', accent: '#684c1e' },
-  { name: 'Green', bg: '#abe260', accent: '#44642f' },
+  { name: 'Cream', bg: '#fdf2c7', accent: '#fde68a' },
+  { name: 'Pink', bg: '#ff2da0', accent: '#ed5eaf' },
+  { name: 'Cyan', bg: '#51d0f0', accent: '#50d7f3' },
+  { name: 'Orange', bg: '#feac41', accent: '#f4b550' },
+  { name: 'Green', bg: '#abe260', accent: '#7cc64b' },
 ];
 
 const HL_COLORS = [

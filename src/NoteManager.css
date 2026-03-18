@@ -35,10 +35,12 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: none; /* Shadow is handled by the OS window usually */
-  border: none;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
   user-select: none;
   cursor: grab;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .manager-mini-launcher:active {
