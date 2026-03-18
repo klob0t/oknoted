@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 const COLORS = [
-  { name: 'Yellow', bg: '#fef3c7', accent: '#fde68a' },
-  { name: 'Pink', bg: '#fce7f3', accent: '#fbcfe8' },
-  { name: 'Blue', bg: '#e0f2fe', accent: '#bae6fd' },
-  { name: 'Green', bg: '#dcfce7', accent: '#bbf7d0' },
-  { name: 'Purple', bg: '#f3e8ff', accent: '#e9d5ff' },
+  { name: 'Cream', bg: '#fdf2c7', accent: '#fde68a' },
+  { name: 'Pink', bg: '#ff2da0', accent: '#e61a8c' },
+  { name: 'Cyan', bg: '#51d0f0', accent: '#38b6d9' },
+  { name: 'Orange', bg: '#feac41', accent: '#e5942a' },
+  { name: 'Green', bg: '#abe260', accent: '#8fc94a' },
 ];
 
 const HL_COLORS = [
@@ -73,28 +73,78 @@ function App() {
   };
 
   const handleToggleChecklist = () => {
-    const newState = !isChecklist;
-    setIsChecklist(newState);
-    
-    // Focus the content area
-    if (contentRef.current) {
-      contentRef.current.focus();
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const anchor = selection.anchorNode;
+    const parentList = anchor?.parentElement?.closest('ul, ol');
+
+    if (parentList) {
+      if (parentList.classList.contains('checklist')) {
+        parentList.classList.remove('checklist');
+        setIsChecklist(false);
+      } else {
+        parentList.classList.add('checklist');
+        if (parentList.tagName === 'OL') {
+          document.execCommand('insertUnorderedList');
+          const newList = selection.anchorNode?.parentElement?.closest('ul');
+          if (newList) newList.classList.add('checklist');
+        }
+        setIsChecklist(true);
+      }
+    } else {
+      document.execCommand('insertUnorderedList');
+      const newList = selection.anchorNode?.parentElement?.closest('ul');
+      if (newList) newList.classList.add('checklist');
+      setIsChecklist(true);
+    }
+    saveContent();
+  };
+
+  const handleContentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === ' ') {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
       
-      // If turning ON, and we don't have a list yet, create one
-      if (newState) {
+      const range = selection.getRangeAt(0);
+      const container = range.startContainer;
+      const text = container.textContent || "";
+      const offset = range.startOffset;
+
+      const textBefore = text.slice(0, offset);
+
+      if (textBefore === '1.') {
+        e.preventDefault();
+        // Precisely remove the '1.' text before converting
+        range.setStart(container, offset - 2);
+        range.deleteContents();
+        document.execCommand('insertOrderedList');
+      } else if (textBefore === '-') {
+        e.preventDefault();
+        // Precisely remove the '-' text before converting
+        range.setStart(container, offset - 1);
+        range.deleteContents();
         document.execCommand('insertUnorderedList');
+      } else if (textBefore === '[]') {
+        e.preventDefault();
+        // Precisely remove the '[]' text before converting
+        range.setStart(container, offset - 2);
+        range.deleteContents();
+        document.execCommand('insertUnorderedList');
+        const newList = window.getSelection()?.anchorNode?.parentElement?.closest('ul');
+        if (newList) newList.classList.add('checklist');
       }
     }
   };
 
   const handleContentClick = (e: React.MouseEvent) => {
-    if (!isChecklist) return;
-
     const target = e.target as HTMLElement;
     if (target.tagName === 'LI') {
-      // Toggle 'checked' class on the list item
-      target.classList.toggle('checked');
-      saveContent();
+      const parentList = target.closest('ul');
+      if (parentList && parentList.classList.contains('checklist')) {
+        target.classList.toggle('checked');
+        saveContent();
+      }
     }
   };
 
@@ -123,8 +173,6 @@ function App() {
               title="Highlight Selection"
             >
               <svg 
-                width="18" 
-                height="18" 
                 viewBox="0 0 1000 1000" 
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -148,11 +196,11 @@ function App() {
                     setHlColorIndex(i);
                     applyHighlight(c.color);
                   }}
+                  title={c.name}
                 >
                   <div className="hl-dot" style={{ backgroundColor: c.color }}>
                     {c.name === 'Clear' && '🧹'}
                   </div>
-                  <span>{c.name}</span>
                 </div>
               ))}
             </div>
@@ -163,8 +211,6 @@ function App() {
             title="Checklist Mode"
           >
             <svg 
-              width="20" 
-              height="20" 
               viewBox="0 0 1000 1000" 
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -179,7 +225,17 @@ function App() {
               <line x1="536.75" y1="649.06" x2="847.32" y2="649.06"/>
             </svg>
           </button>
-          <div className="close-dot" onClick={() => window.close()} title="Close Note" />
+          <button className="close-btn" onClick={() => window.close()} title="Close Note">
+            <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+              <path className="st0" d="M671.24,348.89h0M671.24,348.89l-46.05,413.49h-250.36l-46.05-413.49h342.47M671.24,268.89h-342.48c-22.76,0-44.44,9.69-59.62,26.65-15.18,16.96-22.41,39.58-19.89,62.2l46.05,413.49c4.51,40.51,38.75,71.14,79.51,71.14h250.36c40.76,0,75-30.64,79.51-71.14l45.91-412.16c.42-3.34.64-6.74.64-10.19,0-44.18-35.81-80-80-80h0ZM671.24,428.89h0,0Z"/>
+              <g>
+                <path className="st0" d="M420.68,687.04c-13.81,0-25-11.19-25-25v-231.15c0-13.81,11.19-25,25-25s25,11.19,25,25v231.15c0,13.81-11.19,25-25,25Z"/>
+                <path className="st0" d="M500,687.04c-13.81,0-25-11.19-25-25v-231.15c0-13.81,11.19-25,25-25s25,11.19,25,25v231.15c0,13.81-11.19,25-25,25Z"/>
+                <path className="st0" d="M579.32,687.04c-13.81,0-25-11.19-25-25v-231.15c0-13.81,11.19-25,25-25s25,11.19,25,25v231.15c0,13.81-11.19,25-25,25Z"/>
+              </g>
+              <path className="st0 trash-lid" d="M694.66,150.62h-127.62c0-.09,0-.19,0-.28,0-22.09-17.91-40-40-40h-54.09c-22.09,0-40,17.91-40,40,0,.1,0,.19,0,.28h-127.62c-22.09,0-40,17.91-40,40s17.91,40,40,40h389.32c22.09,0,40-17.91,40-40s-17.91-40-40-40Z"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -195,10 +251,11 @@ function App() {
       {/* CONTENT AREA (Rich Text) */}
       <div 
         ref={contentRef}
-        className={`note-content ${isChecklist ? 'checklist-active' : ''}`}
+        className="note-content"
         contentEditable
         onInput={saveContent}
         onClick={handleContentClick}
+        onKeyDown={handleContentKeyDown}
         placeholder="Type something..."
         spellCheck="false"
         suppressContentEditableWarning={true}

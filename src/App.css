@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+@font-face {
+  font-family: 'Stampatello';
+  src: url('./assets/font/Stampatello.otf') format('opentype');
+}
 
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -8,6 +13,7 @@
 
 body, html {
   margin: 0;
+  
   padding: 0;
   height: 100%;
   overflow: hidden;
@@ -17,6 +23,7 @@ body, html {
 #root {
   width: 100%;
   height: 100vh;
+  
 }
 
 .sticky-container {
@@ -82,8 +89,8 @@ body, html {
   background: none;
   border: none;
   cursor: pointer;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -93,19 +100,56 @@ body, html {
   transition: all 0.2s;
 }
 
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 .icon-btn:hover {
   opacity: 1;
   background: rgba(0,0,0,0.05);
 }
 
-.close-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #ff5f56;
+.close-btn {
+  background: none;
+  border: none;
   cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   margin-left: 8px;
-  border: 1px solid rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.close-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.close-btn .st0 {
+  fill: rgba(0,0,0,0.4);
+  transition: fill 0.2s;
+}
+
+.close-btn:hover .st0 {
+  fill: #ff5f56;
+}
+
+.close-btn .trash-lid {
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: center;
+}
+
+.close-btn:hover .trash-lid {
+  transform: translateY(-80px) rotate(-5deg);
 }
 
 /* New Title Area */
@@ -113,11 +157,12 @@ body, html {
   background: transparent;
   border: none;
   padding: 15px 20px 5px 20px;
-  font-family: 'Gloria Hallelujah', cursive;
-  font-size: 1.1rem;
-  font-weight: bold;
+  font-family: 'Stampatello';
+  font-size: 1.5em;
+  font-weight: 700;
   outline: none;
   color: rgba(0,0,0,0.7);
+  letter-spacing: -0.05rem;
   width: 100%;
   box-sizing: border-box;
 }
@@ -126,12 +171,13 @@ body, html {
 .note-content {
   flex: 1;
   padding: 5px 20px 20px 20px;
-  font-family: 'Gloria Hallelujah', cursive;
+  font-family: 'Stampatello', cursive;
   font-size: 1.1rem;
   outline: none;
   color: rgba(0,0,0,0.8);
   overflow-y: auto;
   line-height: 1.5;
+  font-weight: 800;
 }
 
 .note-content:empty:before {
@@ -188,43 +234,38 @@ body, html {
   position: absolute;
   top: 100%;
   right: 0;
-  background: white;
-  border-radius: 8px;
+  background: rgba(74, 73, 73, 0.553);
+  border-radius: 20px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  padding: 6px;
+  padding: 4px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: column; /* Horizontal layout */
+  gap: 4px;
   z-index: 100;
   margin-top: 0px;
-  padding-top: 10px;
-  min-width: 130px;
+  min-width: auto; /* Shrink to fit icons */
   border: 1px solid rgba(0,0,0,0.05);
   
   /* Animation properties */
   visibility: hidden;
   opacity: 0;
-  /* Start slightly higher and smaller to "drop" down */
-  transform: translateY(-8px) scale(0.9);
+  transform: translateY(-20px) scale(0.9);
   transition: 
     opacity 0.2s ease, 
     transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28),
     visibility 0.2s;
   pointer-events: none;
-  transform-origin: top right;
+  transform-origin: top center;
 }
 
 .hl-popup-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  justify-content: center;
+  padding: 4px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 50%;
   transition: background 0.2s;
-  font-size: 12px;
-  color: #444;
-  white-space: nowrap;
 }
 
 .hl-popup-item:hover {
@@ -232,19 +273,18 @@ body, html {
 }
 
 .hl-popup-item.active {
-  background: rgba(0,0,0,0.08);
-  font-weight: 600;
+  background: rgba(0,0,0,0.1);
 }
 
 .hl-dot {
-  width: 14px;
-  height: 14px;
+  width: 20px; /* Slightly larger for easier clicking */
+  height: 20px;
   border-radius: 50%;
   border: 1px solid rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .hl-dot[style*="transparent"] {
@@ -253,19 +293,19 @@ body, html {
 }
 
 /* Checklist Mode Styles */
-.note-content.checklist-active ul {
+.note-content ul.checklist {
   list-style: none;
   padding-left: 0;
 }
 
-.note-content.checklist-active li {
+.note-content ul.checklist li {
   position: relative;
   padding-left: 30px;
   margin-bottom: 8px;
   cursor: pointer;
 }
 
-.note-content.checklist-active li::before {
+.note-content ul.checklist li::before {
   content: "";
   position: absolute;
   left: 0;
@@ -278,18 +318,29 @@ body, html {
   transition: all 0.2s;
 }
 
-.note-content.checklist-active li.checked {
+.note-content ul.checklist li.checked {
   text-decoration: line-through;
   opacity: 0.6;
 }
 
-.note-content.checklist-active li.checked::before {
+.note-content ul.checklist li.checked::before {
   background-color: #4ade80;
   border-color: #4ade80;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
   background-size: 12px;
   background-repeat: no-repeat;
   background-position: center;
+}
+
+/* Regular List Spacing */
+.note-content ul:not(.checklist), 
+.note-content ol {
+  padding-left: 25px;
+  margin-bottom: 10px;
+}
+
+.note-content li {
+  margin-bottom: 4px;
 }
 
 /* Custom Scrollbar */
