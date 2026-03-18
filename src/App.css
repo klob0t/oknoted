@@ -55,9 +55,21 @@ body, html {
   align-items: center;
   padding: 0 12px;
   user-select: none;
-  background: rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.03);
   backdrop-filter: blur(4px);
   z-index: 10;
+  cursor: grab;
+  transition: background 0.2s, border-bottom 0.2s;
+  border-bottom: 1px solid rgba(0,0,0,0.02);
+}
+
+.drag-handle:hover {
+  background: rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 .color-dots {
@@ -108,6 +120,15 @@ body, html {
 .icon-btn:hover {
   opacity: 1;
   background: rgba(0,0,0,0.05);
+}
+
+.pin-btn.active svg path,
+.pin-btn.active svg polygon {
+  fill: #ff5f56;
+}
+
+.pin-btn.active {
+  opacity: 1;
 }
 
 .close-btn {
@@ -351,4 +372,150 @@ body, html {
 .note-content::-webkit-scrollbar-thumb {
   background: rgba(0,0,0,0.1);
   border-radius: 10px;
+}
+
+/* Manager Styles */
+.manager-container {
+  height: 100vh;
+  background: #f8fafc;
+  font-family: 'Inter', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.manager-header {
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.manager-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.add-main-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-main-btn:hover {
+  background: #1d4ed8;
+}
+
+.add-main-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.empty-state h2 {
+  margin: 0 0 8px 0;
+  color: #334155;
+}
+
+.create-first-btn {
+  margin-top: 24px;
+  background: white;
+  color: #2563eb;
+  border: 2px solid #2563eb;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.create-first-btn:hover {
+  background: #eff6ff;
+}
+
+.notes-list {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-item {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.note-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+}
+
+.note-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-item-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.note-item-preview {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.delete-note-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-note-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.delete-note-btn svg {
+  width: 18px;
+  height: 18px;
 }

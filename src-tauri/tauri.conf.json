@@ -12,13 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "Sticky Note",
-        "width": 300,
-        "height": 300,
-        "decorations": false,
+        "label": "manager",
+        "title": "Sticky Note Manager",
+        "width": 400,
+        "height": 500,
+        "decorations": true,
         "transparent": false,
         "resizable": true,
-        "alwaysOnTop": true
+        "alwaysOnTop": false
       }
     ],
     "security": {
