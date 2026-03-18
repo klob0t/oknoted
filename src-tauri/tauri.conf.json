@@ -13,13 +13,15 @@
     "windows": [
       {
         "label": "manager",
-        "title": "Sticky Note Manager",
-        "width": 400,
-        "height": 500,
-        "decorations": true,
-        "transparent": false,
-        "resizable": true,
-        "alwaysOnTop": false
+        "title": "oknoted",
+        "width": 200,
+        "height": 60,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": false,
+        "shadow": true,
+        "skipTaskbar": true
       }
     ],
     "security": {
