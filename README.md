@@ -2,7 +2,7 @@
 
 **oknoted.** is a minimalist, high-performance sticky note application built with **Tauri 2** and **React 19**. It aims to provide a seamless, clutter-free note-taking experience that feels like using physical sticky notes on your digital desktop.
 
-![oknoted logo](src/assets/icon/logo-new.svg)
+![oknoted logo](src/assets/icon/image-readme.png)
 
 ## ✨ Features
 

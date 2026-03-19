@@ -26,3 +26,5 @@ dist-ssr
 # Local scratch / temporary files
 tmp/
 ~ai*.tmp
+src/assets/icon/icon-set.ai
+src/assets/icon/icon-set.png

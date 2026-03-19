@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
 @font-face {
   font-family: 'Stampatello';
   src: url('./assets/font/Stampatello.otf') format('opentype');
 }
 
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Stampatello';
   line-height: 1.5;
   font-weight: 400;
 }
@@ -30,8 +28,8 @@ body, html {
   overflow: hidden;
   background: transparent;
   box-sizing: border-box;
-  border: 2px solid #604b0581;
-  border-radius: 2%;
+  border: 2px solid #604b05b1;
+  border-radius: 8px;
 }
 
 .sticky-container::after {
@@ -39,7 +37,6 @@ body, html {
   position: absolute;
   inset: 0px;
   border: 2px solid rgb(248, 205, 132);
-  border-radius: 1%;
   pointer-events: none;
   z-index: 40;
 }
@@ -84,6 +81,25 @@ body, html {
 .note-surface-controls .pin-btn svg {
   width: 24px;
   height: 24px;
+}
+
+.draw-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.draw-layer.is-active {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.draw-layer-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .note-geometry {
@@ -150,12 +166,15 @@ body, html {
 
 .note-underlay-plus {
   position: absolute;
-  top: -5px;
+  top: 5px;
   right: 2px;
-  font-size: 32px;
-  line-height: 1;
-  font-weight: 600;
   color: #8f3a06;
+}
+
+.note-underlay-plus svg {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .note-underlay-delete svg {
@@ -250,12 +269,8 @@ body, html {
   opacity: 1;
 }
 
-.pin-btn.active svg path,
-.pin-btn.active svg polygon {
-  fill: #000;
-}
-
-.pin-btn.active svg .pin-core {
+.draw-tool-btn.active {
+  color: #5a2c00;
   opacity: 1;
 }
 
@@ -297,6 +312,12 @@ body, html {
 .note-content:empty:before {
   content: attr(data-placeholder);
   color: rgba(90, 44, 0, 0.72);
+}
+
+.note-content.is-drawing-disabled,
+.title-input.is-drawing-disabled {
+  pointer-events: none;
+  user-select: none;
 }
 
 .note-content span[style*="background-color"] {
@@ -343,7 +364,7 @@ body, html {
   right: 0;
   background: rgba(177, 126, 8, 0.753);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
+  border-radius: 999px;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
   padding: 6px;
   display: flex;
@@ -351,7 +372,7 @@ body, html {
   gap: 6px;
   z-index: 100;
   margin-bottom: 8px;
-  border: 1px solid rgb(230, 175, 102);
+  border: 1px solid rgb(242, 200, 144);
   visibility: hidden;
   opacity: 0;
   transform: translateY(20px) scale(0.9);

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentWindow, getAllWindows } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { FaPlus } from "react-icons/fa";
 import "./NoteManager.css";
 
 const appWindow = getCurrentWindow();
@@ -244,7 +245,9 @@ export default function NoteManager() {
           </svg>
 
           <div className="corner-underlay corner-underlay-create" aria-hidden="true">
-            <span className="corner-symbol corner-symbol-plus">+</span>
+            <span className="corner-symbol corner-symbol-plus">
+              <FaPlus />
+            </span>
           </div>
 
           <div className="corner-underlay corner-underlay-link" aria-hidden="true">

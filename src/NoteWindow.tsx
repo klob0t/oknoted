@@ -1,7 +1,22 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { FaPlus } from "react-icons/fa";
+import { LuEraser, LuHighlighter, LuPencil } from "react-icons/lu";
+import { TbPinned, TbPinnedFilled } from "react-icons/tb";
 import "./NoteWindow.css";
+
+type DrawPoint = {
+  x: number;
+  y: number;
+};
+
+type DrawStroke = {
+  id: string;
+  points: DrawPoint[];
+  color: string;
+  width: number;
+};
 
 const HL_COLORS = [
   { name: "Neon Yellow", color: "#fff700" },
@@ -9,6 +24,14 @@ const HL_COLORS = [
   { name: "Neon Blue", color: "#33d9ff" },
   { name: "Clear", color: "transparent" },
 ];
+
+const DRAW_COLORS = [
+  { name: "Brown", color: "#8f3a06" },
+  { name: "Red", color: "#c2410c" },
+  { name: "Blue", color: "#2563eb" },
+];
+
+const DRAW_PEN_WIDTH = 3.5;
 
 const appWindow = getCurrentWindow();
 
@@ -18,13 +41,16 @@ interface NoteWindowProps {
 
 export default function NoteWindow({ id }: NoteWindowProps) {
   const noteRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const isInitialLoad = useRef(true);
   const isClosing = useRef(false);
   const createPeelRef = useRef(0);
   const deletePeelRef = useRef(0);
   const highlightCloseTimeoutRef = useRef<number | null>(null);
+  const drawPaletteCloseTimeoutRef = useRef<number | null>(null);
   const lastContentRangeRef = useRef<Range | null>(null);
+  const activeStrokeRef = useRef<DrawStroke | null>(null);
 
   const getNoteData = () => {
     const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
@@ -42,7 +68,13 @@ export default function NoteWindow({ id }: NoteWindowProps) {
   const [hlColorIndex, setHlColorIndex] = useState(() => getNoteData().hlColorIndex ?? 0);
   const [isChecklist, setIsChecklist] = useState(() => getNoteData().isChecklist ?? false);
   const [isPinned, setIsPinned] = useState(() => getNoteData().isPinned ?? false);
+  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>(() => getNoteData().drawStrokes ?? []);
+  const [drawColorIndex, setDrawColorIndex] = useState(() => getNoteData().drawColorIndex ?? 0);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [drawTool, setDrawTool] = useState<"pen" | "eraser">("pen");
+  const [activeStroke, setActiveStroke] = useState<DrawStroke | null>(null);
   const [isHighlightPaletteOpen, setIsHighlightPaletteOpen] = useState(false);
+  const [isDrawPaletteOpen, setIsDrawPaletteOpen] = useState(false);
   const [isCreateHovered, setIsCreateHovered] = useState(false);
   const [isDeleteHovered, setIsDeleteHovered] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -51,6 +83,7 @@ export default function NoteWindow({ id }: NoteWindowProps) {
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const openHighlightPalette = () => {
+    setIsDrawPaletteOpen(false);
     if (highlightCloseTimeoutRef.current !== null) {
       window.clearTimeout(highlightCloseTimeoutRef.current);
       highlightCloseTimeoutRef.current = null;
@@ -68,11 +101,58 @@ export default function NoteWindow({ id }: NoteWindowProps) {
     }, 140);
   };
 
+  const openDrawPalette = () => {
+    if (drawPaletteCloseTimeoutRef.current !== null) {
+      window.clearTimeout(drawPaletteCloseTimeoutRef.current);
+      drawPaletteCloseTimeoutRef.current = null;
+    }
+    setIsDrawPaletteOpen(true);
+  };
+
+  const closeDrawPaletteSoon = () => {
+    if (drawPaletteCloseTimeoutRef.current !== null) {
+      window.clearTimeout(drawPaletteCloseTimeoutRef.current);
+    }
+    drawPaletteCloseTimeoutRef.current = window.setTimeout(() => {
+      setIsDrawPaletteOpen(false);
+      drawPaletteCloseTimeoutRef.current = null;
+    }, 140);
+  };
+
+  const activateDrawTool = (tool: "pen" | "eraser") => {
+    setIsHighlightPaletteOpen(false);
+    if (tool !== "pen") {
+      setIsDrawPaletteOpen(false);
+    }
+    setDrawTool((currentTool) => {
+      if (isDrawingMode && currentTool === tool) {
+        setIsDrawingMode(false);
+        return currentTool;
+      }
+
+      setIsDrawingMode(true);
+      return tool;
+    });
+  };
+
   useEffect(() => {
     if (!isClosing.current) {
-      saveNoteData({ title, hlColorIndex, isChecklist, isPinned });
+      saveNoteData({ title, hlColorIndex, isChecklist, isPinned, drawColorIndex });
     }
-  }, [title, hlColorIndex, isChecklist, isPinned]);
+  }, [title, hlColorIndex, isChecklist, isPinned, drawColorIndex]);
+
+  useEffect(() => {
+    if (!isClosing.current) {
+      saveNoteData({ drawStrokes });
+    }
+  }, [drawStrokes]);
+
+  useEffect(() => {
+    if (!isDrawingMode) {
+      activeStrokeRef.current = null;
+      setActiveStroke(null);
+    }
+  }, [isDrawingMode]);
 
   useEffect(() => {
     appWindow.setAlwaysOnTop(isPinned);
@@ -82,6 +162,9 @@ export default function NoteWindow({ id }: NoteWindowProps) {
     return () => {
       if (highlightCloseTimeoutRef.current !== null) {
         window.clearTimeout(highlightCloseTimeoutRef.current);
+      }
+      if (drawPaletteCloseTimeoutRef.current !== null) {
+        window.clearTimeout(drawPaletteCloseTimeoutRef.current);
       }
     };
   }, []);
@@ -447,6 +530,178 @@ export default function NoteWindow({ id }: NoteWindowProps) {
     return `M ${ax} ${ay} L ${t1x} ${t1y} Q ${bx} ${by} ${t2x} ${t2y} L ${cx} ${cy} Z`;
   };
 
+  const getDrawPoint = (clientX: number, clientY: number): DrawPoint | null => {
+    const surface = surfaceRef.current;
+    if (!surface) return null;
+
+    const rect = surface.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+
+    const clamp = (value: number) => Math.max(0, Math.min(1, value));
+    return {
+      x: clamp((clientX - rect.left) / rect.width),
+      y: clamp((clientY - rect.top) / rect.height),
+    };
+  };
+
+  const distanceToSegment = (point: DrawPoint, a: DrawPoint, b: DrawPoint) => {
+    const ax = a.x * viewWidth;
+    const ay = a.y * viewHeight;
+    const bx = b.x * viewWidth;
+    const by = b.y * viewHeight;
+    const px = point.x * viewWidth;
+    const py = point.y * viewHeight;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+    const abLenSq = abx * abx + aby * aby;
+
+    if (abLenSq === 0) return Math.hypot(px - ax, py - ay);
+
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+    const closestX = ax + abx * t;
+    const closestY = ay + aby * t;
+    return Math.hypot(px - closestX, py - closestY);
+  };
+
+  const isPointNearStroke = (point: DrawPoint, stroke: DrawStroke) => {
+    const threshold = Math.max(stroke.width * 2.8, 10);
+    if (stroke.points.length === 1) {
+      return distanceToSegment(point, stroke.points[0], stroke.points[0]) <= threshold;
+    }
+
+    for (let i = 1; i < stroke.points.length; i += 1) {
+      if (distanceToSegment(point, stroke.points[i - 1], stroke.points[i]) <= threshold) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const eraseAtPoint = (point: DrawPoint) => {
+    setDrawStrokes((strokes) => strokes.filter((stroke) => !isPointNearStroke(point, stroke)));
+  };
+
+  const strokeToPath = (stroke: DrawStroke) => {
+    if (stroke.points.length === 0) return "";
+    if (stroke.points.length === 1) {
+      const point = stroke.points[0];
+      return `M ${point.x * viewWidth} ${point.y * viewHeight} L ${point.x * viewWidth + 0.01} ${point.y * viewHeight + 0.01}`;
+    }
+    if (stroke.points.length === 2) {
+      return stroke.points
+        .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * viewWidth} ${point.y * viewHeight}`)
+        .join(" ");
+    }
+
+    const scaledPoints = stroke.points.map((point) => ({
+      x: point.x * viewWidth,
+      y: point.y * viewHeight,
+    }));
+
+    let path = `M ${scaledPoints[0].x} ${scaledPoints[0].y}`;
+
+    for (let i = 1; i < scaledPoints.length - 1; i += 1) {
+      const current = scaledPoints[i];
+      const next = scaledPoints[i + 1];
+      const midX = (current.x + next.x) / 2;
+      const midY = (current.y + next.y) / 2;
+      path += ` Q ${current.x} ${current.y} ${midX} ${midY}`;
+    }
+
+    const penultimate = scaledPoints[scaledPoints.length - 2];
+    const last = scaledPoints[scaledPoints.length - 1];
+    path += ` Q ${penultimate.x} ${penultimate.y} ${last.x} ${last.y}`;
+
+    return path;
+  };
+
+  const finishDrawStroke = () => {
+    const stroke = activeStrokeRef.current;
+    if (stroke && stroke.points.length > 0) {
+      setDrawStrokes((strokes) => [...strokes, stroke]);
+    }
+
+    activeStrokeRef.current = null;
+    setActiveStroke(null);
+  };
+
+  const handleDrawPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDrawingMode) return;
+
+    const point = getDrawPoint(e.clientX, e.clientY);
+    if (!point) return;
+
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (drawTool === "eraser") {
+      eraseAtPoint(point);
+      return;
+    }
+
+    const nextStroke: DrawStroke = {
+      id: crypto.randomUUID(),
+      points: [point],
+      color: DRAW_COLORS[drawColorIndex]?.color || DRAW_COLORS[0].color,
+      width: DRAW_PEN_WIDTH,
+    };
+
+    activeStrokeRef.current = nextStroke;
+    setActiveStroke(nextStroke);
+  };
+
+  const handleDrawPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDrawingMode) return;
+
+    const point = getDrawPoint(e.clientX, e.clientY);
+    if (!point) return;
+
+    if (drawTool === "eraser") {
+      if ((e.buttons & 1) !== 1) return;
+      eraseAtPoint(point);
+      return;
+    }
+
+    const stroke = activeStrokeRef.current;
+    if (!stroke) return;
+
+    const lastPoint = stroke.points[stroke.points.length - 1];
+    const delta = Math.hypot((point.x - lastPoint.x) * viewWidth, (point.y - lastPoint.y) * viewHeight);
+    if (delta < 2.4) return;
+
+    const nextStroke = {
+      ...stroke,
+      points: [...stroke.points, point],
+    };
+
+    activeStrokeRef.current = nextStroke;
+    setActiveStroke(nextStroke);
+  };
+
+  const handleDrawPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    if (drawTool === "pen") {
+      finishDrawStroke();
+    }
+  };
+
+  const handleDrawPointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+
+    if (drawTool === "pen") {
+      finishDrawStroke();
+    }
+  };
+
   const viewWidth = Math.max(size.width, 1);
   const viewHeight = Math.max(size.height, 1);
   const createLiftX = createPeel * 1.08;
@@ -473,7 +728,9 @@ export default function NoteWindow({ id }: NoteWindowProps) {
       {createPeel > 0 ? (
         <>
           <div className="note-underlay note-underlay-create" aria-hidden="true">
-            <span className="note-underlay-plus">+</span>
+            <span className="note-underlay-plus">
+              <FaPlus />
+            </span>
           </div>
           <svg className="note-geometry note-flap-shadow-geometry" viewBox={`0 0 ${viewWidth} ${viewHeight}`} preserveAspectRatio="none" aria-hidden="true">
             <polygon className="note-flap-shadow-shape" points={createShadowPoints} />
@@ -523,6 +780,7 @@ export default function NoteWindow({ id }: NoteWindowProps) {
       ) : null}
 
       <div
+        ref={surfaceRef}
         className="note-surface"
         style={
           {
@@ -533,21 +791,17 @@ export default function NoteWindow({ id }: NoteWindowProps) {
       >
         <div className="note-surface-controls">
           <button className={`icon-btn pin-btn ${isPinned ? "active" : ""}`} onClick={togglePinned} title={isPinned ? "Unpin Note" : "Pin Note"}>
-            <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
-              <path d="M544.45,192.12l114.96,100.12.11-.12,115.39,99.62-79.03,16.21-140.91,162.5-4.86,80.52-114.96-100.12.11-.12-115.39-99.62,79.03-16.21,140.69-162.25,4.86-80.52M544.44,102.12c-11.74,0-23.56,2.3-34.79,7-31.63,13.26-52.97,43.35-55.04,77.58l-3.02,50.05-100.69,116.12-49.12,10.08c-33.6,6.89-60.36,32.28-69,65.47-8.65,33.19,2.32,68.41,28.28,90.82l111.23,96.03c1.21,1.18,2.46,2.34,3.76,3.46l114.96,100.12c16.69,14.53,37.77,22.13,59.12,22.13,11.74,0,23.56-2.3,34.79-7,31.63-13.26,52.97-43.35,55.04-77.58l3.02-50.05,100.91-116.37,49.12-10.08c33.6-6.89,60.36-32.28,69.01-65.47,8.65-33.19-2.32-68.41-28.28-90.82l-115.39-99.62c-1.3-1.12-2.62-2.19-3.96-3.23l-110.82-96.51c-16.69-14.53-37.77-22.13-59.12-22.13h0Z" fill="currentColor" opacity="0.8"/>
-              <polygon className="pin-core" points="774.91 391.73 695.88 407.94 554.97 570.45 550.11 650.97 435.16 550.85 435.26 550.73 319.87 451.11 398.9 434.9 539.59 272.64 544.45 192.12 659.41 292.24 659.51 292.11 774.91 391.73" fill="currentColor" opacity="0"/>
-              <polygon points="472.94 583.61 224.91 811 207.41 795.83 397.38 518.1 472.94 583.61 472.94 583.61" fill="currentColor" opacity="0.8"/>
-            </svg>
+            {isPinned ? <TbPinnedFilled /> : <TbPinned />}
           </button>
 
           <div data-tauri-drag-region className="pill-drag-handle" />
         </div>
 
-        <input className="title-input" placeholder="title..." value={title} onChange={(e) => setTitle(e.target.value)} spellCheck="false" />
+        <input className={`title-input${isDrawingMode ? " is-drawing-disabled" : ""}`} placeholder="title..." value={title} onChange={(e) => setTitle(e.target.value)} spellCheck="false" />
 
         <div
           ref={contentRef}
-          className="note-content"
+          className={`note-content${isDrawingMode ? " is-drawing-disabled" : ""}`}
           contentEditable
           onInput={saveContent}
           onKeyUp={rememberContentSelection}
@@ -560,18 +814,94 @@ export default function NoteWindow({ id }: NoteWindowProps) {
           suppressContentEditableWarning={true}
         />
 
+        <div
+          className={`draw-layer${isDrawingMode ? " is-active" : ""}`}
+          onPointerDown={handleDrawPointerDown}
+          onPointerMove={handleDrawPointerMove}
+          onPointerUp={handleDrawPointerUp}
+          onPointerCancel={handleDrawPointerCancel}
+        >
+          <svg className="draw-layer-svg" viewBox={`0 0 ${viewWidth} ${viewHeight}`} preserveAspectRatio="none" aria-hidden="true">
+            {drawStrokes.map((stroke) => (
+              <path
+                key={stroke.id}
+                d={strokeToPath(stroke)}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {activeStroke ? (
+              <path
+                d={strokeToPath(activeStroke)}
+                fill="none"
+                stroke={activeStroke.color}
+                strokeWidth={activeStroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+          </svg>
+        </div>
+
         <div className="note-surface-tools">
           <div className="tool-actions">
+            <div
+              className={`hl-controls${isDrawPaletteOpen ? " is-open" : ""}`}
+              onPointerEnter={openDrawPalette}
+              onPointerLeave={closeDrawPaletteSoon}
+            >
+              <button
+                type="button"
+                className={`icon-btn draw-tool-btn ${isDrawingMode && drawTool === "pen" ? "active" : ""}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  activateDrawTool("pen");
+                }}
+                title={isDrawingMode && drawTool === "pen" ? "Exit Draw Mode" : "Draw"}
+              >
+                <LuPencil />
+              </button>
+              <div className="hl-popup" onPointerEnter={openDrawPalette} onPointerLeave={closeDrawPaletteSoon}>
+                {DRAW_COLORS.map((c, i) => (
+                  <div
+                    key={c.name}
+                    className={`hl-popup-item ${i === drawColorIndex ? "active" : ""}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setDrawColorIndex(i);
+                      setDrawTool("pen");
+                      setIsDrawingMode(true);
+                    }}
+                    title={c.name}
+                  >
+                    <div className="hl-dot" style={{ backgroundColor: c.color }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              className={`icon-btn draw-tool-btn ${isDrawingMode && drawTool === "eraser" ? "active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                activateDrawTool("eraser");
+              }}
+              title={isDrawingMode && drawTool === "eraser" ? "Exit Eraser" : "Erase Strokes"}
+            >
+              <LuEraser />
+            </button>
             <div
               className={`hl-controls${isHighlightPaletteOpen ? " is-open" : ""}`}
               onPointerEnter={openHighlightPalette}
               onPointerLeave={closeHighlightPaletteSoon}
             >
-              <button type="button" className="icon-btn highlight-btn" onMouseDown={(e) => { e.preventDefault(); applyHighlight(); }} title="Highlight Selection">
-                <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="currentColor" d="M618.64,231.51c-.96-11.89-6.61-22.92-15.7-30.65l-130.44-110.91c-18.93-16.1-47.33-13.8-63.43,5.13l-135.88,159.81-125.87,148.03c-4.87,5.73-8.23,12.59-9.77,19.96l-32.51,155.76c-2.59,12.44.19,25.39,7.66,35.67,7.48,10.27,18.94,16.91,31.58,18.27l65.04,7c1.61.17,3.22.26,4.82.26,13.38,0,26.17-5.97,34.77-16.44l25.5-31.05,42.51-4.64c11.43-1.24,21.95-6.82,29.4-15.58l148.39-174.52,113.36-133.32c7.73-9.09,11.54-20.88,10.57-32.78ZM289.36,500.19l-42.94,4.68c-11.7,1.27-22.43,7.08-29.9,16.17l-10.08,12.26,16.87-80.81,126.21-148.42,68.87,44.37-129.03,151.75Z" />
-                  <path fill="currentColor" d="M850.91,843.4H149.09c-33.14,0-60-26.86-60-60s26.86-60,60-60h701.81c33.14,0,60,26.86,60,60s-26.86,60-60,60Z" />
-                </svg>
+              <button type="button" className="icon-btn highlight-btn" onMouseDown={(e) => { e.preventDefault(); setIsDrawingMode(false); applyHighlight(); }} title="Highlight Selection">
+                <LuHighlighter />
               </button>
               <div className="hl-popup" onPointerEnter={openHighlightPalette} onPointerLeave={closeHighlightPaletteSoon}>
                 {HL_COLORS.map((c, i) => (
@@ -597,6 +927,7 @@ export default function NoteWindow({ id }: NoteWindowProps) {
               className={`icon-btn ${isChecklist ? "active" : ""}`}
               onMouseDown={(e) => {
                 e.preventDefault();
+                setIsDrawingMode(false);
                 handleToggleChecklist();
               }}
               title="Checklist Mode"

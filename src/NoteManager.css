@@ -13,10 +13,25 @@ body, html {
 
 .manager-container {
   height: 100vh;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: transparent;
+  box-sizing: border-box;
+  border: 2px solid #4c3b0389;
+  border-radius: 8px;
+}
+
+.manager-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgb(248, 205, 132);
+  border-radius: 2%;
+  pointer-events: none;
+  z-index: 40;
 }
 
 .manager-mini-launcher {
@@ -43,6 +58,7 @@ body, html {
   inset: 0;
   z-index: 1;
   overflow: visible;
+  pointer-events: none;
 }
 
 .launcher-geometry {
@@ -156,6 +172,7 @@ body, html {
   appearance: none;
   outline: none;
   box-shadow: none;
+  pointer-events: auto;
 }
 
 .corner-hit-area-create {
@@ -205,9 +222,9 @@ body, html {
 
 .corner-symbol-plus {
   position: absolute;
-  top: -5px;
+  top: 5px;
   right: 2px;
-  font-size: 32px;
+  font-size: 16px;
   line-height: 1;
   font-weight: 600;
   color: #8f3a06;
