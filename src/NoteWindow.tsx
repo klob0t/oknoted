@@ -4,6 +4,7 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { FaPlus } from "react-icons/fa";
 import { LuEraser, LuHighlighter, LuPencil } from "react-icons/lu";
 import { TbPinned, TbPinnedFilled } from "react-icons/tb";
+import { deleteNote, readNote, updateNote } from "./noteStorage";
 import "./NoteWindow.css";
 
 type DrawPoint = {
@@ -51,24 +52,24 @@ export default function NoteWindow({ id }: NoteWindowProps) {
   const drawPaletteCloseTimeoutRef = useRef<number | null>(null);
   const lastContentRangeRef = useRef<Range | null>(null);
   const activeStrokeRef = useRef<DrawStroke | null>(null);
+  const didBindWindowPositionRef = useRef(false);
 
   const getNoteData = () => {
-    const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
-    return allNotes[id] || {};
+    return readNote(id);
   };
 
   const saveNoteData = (updates: any) => {
     if (isClosing.current) return;
-    const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
-    allNotes[id] = { ...allNotes[id], ...updates };
-    localStorage.setItem("sticky-notes-data", JSON.stringify(allNotes));
+    updateNote(id, updates);
   };
 
   const [title, setTitle] = useState(() => getNoteData().title || "");
   const [hlColorIndex, setHlColorIndex] = useState(() => getNoteData().hlColorIndex ?? 0);
   const [isChecklist, setIsChecklist] = useState(() => getNoteData().isChecklist ?? false);
   const [isPinned, setIsPinned] = useState(() => getNoteData().isPinned ?? false);
-  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>(() => getNoteData().drawStrokes ?? []);
+  const [displayPinned, setDisplayPinned] = useState(() => getNoteData().isPinned ?? false);
+  const [pinAnimation, setPinAnimation] = useState<"pinning" | "unpinning" | null>(null);
+  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>(() => (getNoteData().drawStrokes as DrawStroke[] | undefined) ?? []);
   const [drawColorIndex, setDrawColorIndex] = useState(() => getNoteData().drawColorIndex ?? 0);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [drawTool, setDrawTool] = useState<"pen" | "eraser">("pen");
@@ -156,6 +157,46 @@ export default function NoteWindow({ id }: NoteWindowProps) {
 
   useEffect(() => {
     appWindow.setAlwaysOnTop(isPinned);
+  }, []);
+
+  useEffect(() => {
+    if (didBindWindowPositionRef.current) {
+      return;
+    }
+
+    didBindWindowPositionRef.current = true;
+    let unlistenMoved: (() => void) | undefined;
+    let cancelled = false;
+
+    const saveWindowPosition = async () => {
+      try {
+        const position = await appWindow.outerPosition();
+        if (cancelled || isClosing.current) {
+          return;
+        }
+
+        saveNoteData({
+          windowPosition: {
+            x: position.x,
+            y: position.y,
+          },
+        });
+      } catch {
+        // Ignore best-effort position persistence failures.
+      }
+    };
+
+    void saveWindowPosition();
+    void appWindow.onMoved(() => {
+      void saveWindowPosition();
+    }).then((unlisten) => {
+      unlistenMoved = unlisten;
+    });
+
+    return () => {
+      cancelled = true;
+      unlistenMoved?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -286,11 +327,9 @@ export default function NoteWindow({ id }: NoteWindowProps) {
 
   const spawnNewNote = () => {
     const newId = crypto.randomUUID();
-    const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
-    allNotes[newId] = { title: "", contentHtml: "" };
-    localStorage.setItem("sticky-notes-data", JSON.stringify(allNotes));
+    updateNote(newId, { title: "", contentHtml: "" });
 
-    new WebviewWindow(`note-${newId}`, {
+    const noteWindow = new WebviewWindow(`note-${newId}`, {
       url: `index.html?id=${newId}`,
       title: "Sticky Note",
       width: 300,
@@ -302,20 +341,61 @@ export default function NoteWindow({ id }: NoteWindowProps) {
       alwaysOnTop: false,
       skipTaskbar: true,
     });
+
+    noteWindow.once("tauri://created", async () => {
+      try {
+        const position = await noteWindow.outerPosition();
+        updateNote(newId, {
+          windowPosition: {
+            x: position.x,
+            y: position.y,
+          },
+        });
+      } catch {
+        // Ignore initial position persistence failures.
+      }
+    });
   };
 
   const closeNote = async () => {
     isClosing.current = true;
-    const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
-    delete allNotes[id];
-    localStorage.setItem("sticky-notes-data", JSON.stringify(allNotes));
+    deleteNote(id);
     await appWindow.close();
   };
 
   const togglePinned = () => {
     const newState = !isPinned;
+    setPinAnimation(newState ? "pinning" : "unpinning");
     setIsPinned(newState);
     appWindow.setAlwaysOnTop(newState);
+  };
+
+  useEffect(() => {
+    if (pinAnimation !== "pinning") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDisplayPinned(true);
+    }, 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pinAnimation]);
+
+  const handlePinAnimationEnd = (event: React.AnimationEvent<HTMLButtonElement>) => {
+    if (!pinAnimation) {
+      return;
+    }
+
+    const expectedAnimation = pinAnimation === "pinning" ? "pin-stamp" : "pin-lift";
+    if (event.animationName !== expectedAnimation) {
+      return;
+    }
+
+    if (pinAnimation === "unpinning") {
+      setDisplayPinned(false);
+    }
+    setPinAnimation(null);
   };
 
   const applyHighlight = (color?: string) => {
@@ -790,8 +870,11 @@ export default function NoteWindow({ id }: NoteWindowProps) {
         }
       >
         <div className="note-surface-controls">
-          <button className={`icon-btn pin-btn ${isPinned ? "active" : ""}`} onClick={togglePinned} title={isPinned ? "Unpin Note" : "Pin Note"}>
-            {isPinned ? <TbPinnedFilled /> : <TbPinned />}
+          <button className={`icon-btn pin-btn ${isPinned ? "active" : ""}${pinAnimation ? ` is-${pinAnimation}` : ""}`} onClick={togglePinned} onAnimationEnd={handlePinAnimationEnd} title={isPinned ? "Unpin Note" : "Pin Note"}>
+            <span className={`pin-icon-stack${displayPinned ? " is-filled" : ""}`} aria-hidden="true">
+              <TbPinned className="pin-icon pin-icon-outline" />
+              <TbPinnedFilled className="pin-icon pin-icon-filled" />
+            </span>
           </button>
 
           <div data-tauri-drag-region className="pill-drag-handle" />

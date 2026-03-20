@@ -51,3 +51,6 @@
     - Set up Rust (MSVC) and C++ Build Tools environment.
     - Configured window transparency and shadow.
     - Enabled native window dragging.
+
+
+run codex resume 019d062a-e58e-71f1-92f9-d08bf8acb2dd

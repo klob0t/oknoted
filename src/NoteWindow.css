@@ -9,7 +9,8 @@
   font-weight: 400;
 }
 
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -50,14 +51,12 @@ body, html {
   display: flex;
   flex-direction: column;
   background: #f9bf1f;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--create-peel, 0px)) 0,
-    100% var(--create-peel, 0px),
-    100% 100%,
-    var(--delete-peel, 0px) 100%,
-    0 calc(100% - var(--delete-peel, 0px))
-  );
+  clip-path: polygon(0 0,
+      calc(100% - var(--create-peel, 0px)) 0,
+      100% var(--create-peel, 0px),
+      100% 100%,
+      var(--delete-peel, 0px) 100%,
+      0 calc(100% - var(--delete-peel, 0px)));
 }
 
 .note-surface-controls {
@@ -76,11 +75,44 @@ body, html {
   left: 5px;
   width: 38px;
   height: 38px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 
 .note-surface-controls .pin-btn svg {
   width: 24px;
   height: 24px;
+  transform-origin: 50% 24%;
+}
+
+.pin-icon-stack {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.pin-icon {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.06s linear;
+}
+
+.pin-icon-outline {
+  opacity: 1;
+}
+
+.pin-icon-filled {
+  opacity: 0;
+}
+
+.pin-icon-stack.is-filled .pin-icon-outline {
+  opacity: 0;
+}
+
+.pin-icon-stack.is-filled .pin-icon-filled {
+  opacity: 1;
 }
 
 .draw-layer {
@@ -187,7 +219,7 @@ body, html {
 
 .note-underlay-delete .trash-body,
 .note-underlay-delete .trash-lid {
-  fill: #8f3a06;
+  fill: #4f2002;
   transition: fill 0.2s ease;
 }
 
@@ -200,7 +232,7 @@ body, html {
 
 .note-underlay-delete.is-open .trash-body,
 .note-underlay-delete.is-open .trash-lid {
-  fill: #ff5f56;
+  fill: #ff0d00;
 }
 
 .note-underlay-delete.is-open .trash-lid {
@@ -218,7 +250,11 @@ body, html {
   border-radius: 10px;
   cursor: grab;
   transition: background 0.2s;
-  pointer-events: auto;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    background 0.2s,
+    opacity 0.18s ease;
 }
 
 .pill-drag-handle:hover {
@@ -235,12 +271,18 @@ body, html {
   bottom: 10px;
   z-index: 30;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
 }
 
 .tool-actions {
   display: flex;
   gap: 4px;
   align-items: center;
+}
+
+.note-surface-tools .icon-btn {
+  pointer-events: none;
 }
 
 .icon-btn {
@@ -277,6 +319,153 @@ body, html {
 .pin-btn.active {
   color: #000;
   opacity: 1;
+}
+
+.pin-btn.is-pinning svg {
+  animation: pin-stamp 1s cubic-bezier(0.2, 0.85, 0.28, 1);
+}
+
+.pin-btn.is-unpinning {
+  animation: pin-lift 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pin-btn.is-unpinning svg {
+  animation: pin-vibrate 1.4s linear;
+  transform-origin: top;
+}
+
+@keyframes pin-vibrate {
+  0% {
+    transform: translateX(0) rotateZ(0deg);
+  }
+
+  5% {
+    transform: translateX(-0.12px) rotateZ(-0.18deg);
+  }
+
+  10% {
+    transform: translateX(0.2px) rotateZ(0.3deg);
+  }
+
+  15% {
+    transform: translateX(-0.28px) rotateZ(-0.4deg);
+  }
+
+  20% {
+    transform: translateX(0.3px) rotateZ(0.4deg);
+  }
+
+  25% {
+    transform: translateX(-0.38px) rotateZ(-0.55deg);
+  }
+
+  30% {
+    transform: translateX(0.5px) rotateZ(0.7deg);
+  }
+
+  35% {
+    transform: translateX(-0.58px) rotateZ(-0.8deg);
+  }
+
+  40% {
+    transform: translateX(0.7px) rotateZ(0.9deg);
+  }
+
+  45% {
+    transform: translateX(-0.82px) rotateZ(-1.08deg);
+  }
+
+  50% {
+    transform: translateX(0.9px) rotateZ(1.2deg);
+  }
+
+  55% {
+    transform: translateX(-1.04px) rotateZ(-1.38deg);
+  }
+
+  60% {
+    transform: translateX(1.2px) rotateZ(1.6deg);
+  }
+
+  65% {
+    transform: translateX(-1.3px) rotateZ(-1.68deg);
+  }
+
+  70% {
+    transform: translateX(1.4px) rotateZ(1.8deg);
+  }
+
+  75% {
+    transform: translateX(-1.45px) rotateZ(-1.85deg);
+  }
+
+  80% {
+    transform: translateX(1.5px) rotateZ(1.9deg);
+  }
+
+  85% {
+    transform: translateX(-1.53px) rotateZ(-1.93deg);
+  }
+
+  90% {
+    transform: translateX(1.55px) rotateZ(1.95deg);
+  }
+
+  95% {
+    transform: translateX(-1.58px) rotateZ(-1.98deg);
+  }
+
+  100% {
+    transform: translateX(1.6px) rotateZ(2deg);
+  }
+}
+
+@keyframes pin-stamp {
+  0% {
+    transform: translateY(0);
+  }
+
+  70% {
+    transform: translateY(-5px);
+  }
+
+  85% {
+    transform: translateY(-5px)
+  }
+
+  90% {
+    transform: translateY(2px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pin-lift {
+  0% {
+    transform: translateY(0);
+  }
+
+  70% {
+    transform: translateY(-1px);
+  }
+
+  72% {
+    transform: translateY(-4px);
+  }
+
+  75% {
+    transform: translateY(-5px);
+  }
+
+  99% {
+    transform: translateY(-4px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
 }
 
 .title-input {
@@ -365,7 +554,7 @@ body, html {
   background: rgba(177, 126, 8, 0.753);
   backdrop-filter: blur(10px);
   border-radius: 999px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
   padding: 6px;
   display: flex;
   flex-direction: column;
@@ -399,7 +588,7 @@ body, html {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,7 +623,7 @@ body, html {
   top: 8px;
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(0,0,0,0.2);
+  border: 2px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0);
   transition: all 0.2s;
@@ -464,7 +653,7 @@ body, html {
 }
 
 .note-content::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 10px;
 }
 
@@ -479,6 +668,9 @@ body, html {
   appearance: none;
   outline: none;
   box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 
 .corner-hit-area-create {
@@ -499,6 +691,36 @@ body, html {
 .corner-hit-area:focus-visible {
   outline: none;
   box-shadow: none;
+}
+
+.sticky-container:hover .pill-drag-handle,
+.sticky-container:hover .note-surface-tools,
+.sticky-container:hover .corner-hit-area,
+.sticky-container:hover .note-surface-controls .pin-btn,
+.sticky-container:focus-within .pill-drag-handle,
+.sticky-container:focus-within .note-surface-tools,
+.sticky-container:focus-within .corner-hit-area,
+.sticky-container:focus-within .note-surface-controls .pin-btn {
+  opacity: 1;
+}
+
+.sticky-container:hover .pill-drag-handle,
+.sticky-container:hover .corner-hit-area,
+.sticky-container:focus-within .pill-drag-handle,
+.sticky-container:focus-within .corner-hit-area {
+  pointer-events: auto;
+}
+
+.sticky-container:hover .note-surface-tools .icon-btn,
+.sticky-container:focus-within .note-surface-tools .icon-btn,
+.sticky-container:hover .note-surface-controls .pin-btn,
+.sticky-container:focus-within .note-surface-controls .pin-btn,
+.note-surface-controls .pin-btn.active {
+  pointer-events: auto;
+}
+
+.note-surface-controls .pin-btn.active {
+  opacity: 1;
 }
 
 .sr-only {

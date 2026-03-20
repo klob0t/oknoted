@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentWindow, getAllWindows } from "@tauri-apps/api/window";
+import { enable as enableAutostart, isEnabled as isAutostartEnabled } from "@tauri-apps/plugin-autostart";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FaPlus } from "react-icons/fa";
+import { readNoteStore, updateNote } from "./noteStorage";
 import "./NoteManager.css";
 
 const appWindow = getCurrentWindow();
@@ -15,9 +17,31 @@ export default function NoteManager() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [createPeel, setCreatePeel] = useState(0);
   const [linkPeel, setLinkPeel] = useState(0);
+  const [hoveredAction, setHoveredAction] = useState<"create" | "link" | null>(null);
+  const didRestoreNotesRef = useRef(false);
+  const isRestoringNotesRef = useRef(true);
+
+  useEffect(() => {
+    const ensureAutostartEnabled = async () => {
+      try {
+        const enabled = await isAutostartEnabled();
+        if (!enabled) {
+          await enableAutostart();
+        }
+      } catch {
+        // Ignore autostart registration failures in development/runtime fallback.
+      }
+    };
+
+    void ensureAutostartEnabled();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(async () => {
+      if (isRestoringNotesRef.current) {
+        return;
+      }
+
       const windows = await getAllWindows();
       const hasNotes = windows.some((w) => w.label.startsWith("note-"));
       if (!hasNotes) {
@@ -26,6 +50,63 @@ export default function NoteManager() {
     }, 1000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (didRestoreNotesRef.current) {
+      return;
+    }
+
+    didRestoreNotesRef.current = true;
+
+    const restoreNotes = async () => {
+      try {
+        const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        const allNotes = readNoteStore();
+        const noteEntries = Object.entries(allNotes);
+
+        if (noteEntries.length === 0) {
+          await appWindow.show();
+          return;
+        }
+
+        const existingWindows = await getAllWindows();
+        const openLabels = new Set(existingWindows.map((window) => window.label));
+
+        for (const [id, note] of noteEntries) {
+          const label = `note-${id}`;
+          if (openLabels.has(label)) {
+            continue;
+          }
+
+          const options: ConstructorParameters<typeof WebviewWindow>[1] = {
+            url: `index.html?id=${id}`,
+            title: "Sticky Note",
+            width: 300,
+            height: 300,
+            minWidth: 300,
+            minHeight: 300,
+            decorations: false,
+            transparent: true,
+            alwaysOnTop: !!note.isPinned,
+            skipTaskbar: true,
+          };
+
+          if (note.windowPosition) {
+            options.x = note.windowPosition.x;
+            options.y = note.windowPosition.y;
+          }
+
+          new WebviewWindow(label, options);
+        }
+
+        await appWindow.hide();
+      } finally {
+        isRestoringNotesRef.current = false;
+      }
+    };
+
+    void restoreNotes();
   }, []);
 
   useLayoutEffect(() => {
@@ -146,12 +227,9 @@ export default function NoteManager() {
   const createNewNote = async () => {
     const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
     const id = crypto.randomUUID();
+    updateNote(id, { title: "", contentHtml: "", colorIndex: 0 });
 
-    const allNotes = JSON.parse(localStorage.getItem("sticky-notes-data") || "{}");
-    allNotes[id] = { title: "", contentHtml: "", colorIndex: 0 };
-    localStorage.setItem("sticky-notes-data", JSON.stringify(allNotes));
-
-    new WebviewWindow(`note-${id}`, {
+    const noteWindow = new WebviewWindow(`note-${id}`, {
       url: `index.html?id=${id}`,
       title: "Sticky Note",
       width: 300,
@@ -164,11 +242,64 @@ export default function NoteManager() {
       skipTaskbar: true,
     });
 
+    noteWindow.once("tauri://created", async () => {
+      try {
+        const position = await noteWindow.outerPosition();
+        updateNote(id, {
+          windowPosition: {
+            x: position.x,
+            y: position.y,
+          },
+        });
+      } catch {
+        // Ignore initial position persistence failures.
+      }
+    });
+
     appWindow.hide();
   };
 
   const openWebsite = async () => {
     await openUrl("https://klob0t.xyz");
+  };
+
+  const updateCornerHover = (clientX: number, clientY: number) => {
+    const element = launcherRef.current;
+    if (!element) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+
+    const isCreateCorner = localX >= rect.width - 56 && localY <= 56;
+    const isLinkCorner = localX <= 52 && localY >= rect.height - 52;
+
+    setIsCreateHovered(isCreateCorner);
+    setIsLinkHovered(isLinkCorner);
+    setHoveredAction(isCreateCorner ? "create" : isLinkCorner ? "link" : null);
+  };
+
+  const getCornerAction = (clientX: number, clientY: number) => {
+    const element = launcherRef.current;
+    if (!element) {
+      return null;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+
+    if (localX >= rect.width - 56 && localY <= 56) {
+      return "create";
+    }
+
+    if (localX <= 52 && localY >= rect.height - 52) {
+      return "link";
+    }
+
+    return null;
   };
 
   const buildRoundedTrianglePath = (
@@ -236,7 +367,24 @@ export default function NoteManager() {
 
   return (
     <div className="manager-container">
-      <div className="manager-mini-launcher">
+      <div
+        className={`manager-mini-launcher${hoveredAction ? " is-action-hovered" : ""}`}
+        title={hoveredAction === "create" ? "New Note" : hoveredAction === "link" ? "Open klob0t.xyz" : ""}
+        onPointerMove={(event) => updateCornerHover(event.clientX, event.clientY)}
+        onPointerLeave={() => {
+          setIsCreateHovered(false);
+          setIsLinkHovered(false);
+          setHoveredAction(null);
+        }}
+        onClick={(event) => {
+          const action = getCornerAction(event.clientX, event.clientY);
+          if (action === "create") {
+            void createNewNote();
+          } else if (action === "link") {
+            void openWebsite();
+          }
+        }}
+      >
         <div data-tauri-drag-region className="launcher-drag-region" />
 
         <div ref={launcherRef} className="launcher-sticker">
@@ -299,28 +447,6 @@ export default function NoteManager() {
           <div className="launcher-face">
             <span className="app-logo" aria-label="oknoted" role="img" />
           </div>
-
-          <button
-            type="button"
-            className="corner-hit-area corner-hit-area-create"
-            onPointerEnter={() => setIsCreateHovered(true)}
-            onPointerLeave={() => setIsCreateHovered(false)}
-            onClick={createNewNote}
-            title="New Note"
-          >
-            <span className="sr-only">New Note</span>
-          </button>
-
-          <button
-            type="button"
-            className="corner-hit-area corner-hit-area-link"
-            onPointerEnter={() => setIsLinkHovered(true)}
-            onPointerLeave={() => setIsLinkHovered(false)}
-            onClick={openWebsite}
-            title="huh?"
-          >
-            <span className="sr-only">huh?</span>
-          </button>
         </div>
       </div>
     </div>
