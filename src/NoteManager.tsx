@@ -3,7 +3,8 @@ import { getCurrentWindow, getAllWindows } from "@tauri-apps/api/window";
 import { enable as enableAutostart, isEnabled as isAutostartEnabled } from "@tauri-apps/plugin-autostart";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FaPlus } from "react-icons/fa";
-import { readNoteStore, updateNote } from "./noteStorage";
+import { readNoteStore, updateNote } from "./lib/noteStorage";
+import { createNoteWindow, persistInitialWindowPosition } from "./lib/noteWindowPersistence";
 import "./NoteManager.css";
 
 const appWindow = getCurrentWindow();
@@ -61,7 +62,6 @@ export default function NoteManager() {
 
     const restoreNotes = async () => {
       try {
-        const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
         const allNotes = readNoteStore();
         const noteEntries = Object.entries(allNotes);
 
@@ -79,25 +79,11 @@ export default function NoteManager() {
             continue;
           }
 
-          const options: ConstructorParameters<typeof WebviewWindow>[1] = {
-            url: `index.html?id=${id}`,
-            title: "Sticky Note",
-            width: 300,
-            height: 300,
-            minWidth: 300,
-            minHeight: 300,
-            decorations: false,
-            transparent: true,
+          createNoteWindow(id, {
             alwaysOnTop: !!note.isPinned,
-            skipTaskbar: true,
-          };
-
-          if (note.windowPosition) {
-            options.x = note.windowPosition.x;
-            options.y = note.windowPosition.y;
-          }
-
-          new WebviewWindow(label, options);
+            x: note.windowPosition?.x,
+            y: note.windowPosition?.y,
+          });
         }
 
         await appWindow.hide();
@@ -225,36 +211,10 @@ export default function NoteManager() {
   }, [isLinkHovered]);
 
   const createNewNote = async () => {
-    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
     const id = crypto.randomUUID();
     updateNote(id, { title: "", contentHtml: "", colorIndex: 0 });
-
-    const noteWindow = new WebviewWindow(`note-${id}`, {
-      url: `index.html?id=${id}`,
-      title: "Sticky Note",
-      width: 300,
-      height: 300,
-      minWidth: 300,
-      minHeight: 300,
-      decorations: false,
-      transparent: true,
-      alwaysOnTop: false,
-      skipTaskbar: true,
-    });
-
-    noteWindow.once("tauri://created", async () => {
-      try {
-        const position = await noteWindow.outerPosition();
-        updateNote(id, {
-          windowPosition: {
-            x: position.x,
-            y: position.y,
-          },
-        });
-      } catch {
-        // Ignore initial position persistence failures.
-      }
-    });
+    const noteWindow = createNoteWindow(id);
+    persistInitialWindowPosition(id, noteWindow);
 
     appWindow.hide();
   };
@@ -369,7 +329,7 @@ export default function NoteManager() {
     <div className="manager-container">
       <div
         className={`manager-mini-launcher${hoveredAction ? " is-action-hovered" : ""}`}
-        title={hoveredAction === "create" ? "New Note" : hoveredAction === "link" ? "Open klob0t.xyz" : ""}
+        title={hoveredAction === "create" ? "New Note" : hoveredAction === "link" ? "huh?" : ""}
         onPointerMove={(event) => updateCornerHover(event.clientX, event.clientY)}
         onPointerLeave={() => {
           setIsCreateHovered(false);
